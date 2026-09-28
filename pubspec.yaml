@@ -31,7 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  edfapg_sdk: ^2.0.11+2
+  edfapay_pg_plugin: ^1.0.0-beta.2
+  edfapay_apple_pay_sheet:
+    path: packages/edfapay_apple_pay_sheet
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

@@ -16,4 +16,14 @@ void main() {
     expect(find.text('Complete your purchase'), findsOneWidget);
     expect(find.text('Apple Pay'), findsOneWidget);
   });
+
+  testWidgets('Apple Pay button explains iOS-only support', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.tap(find.text('Apple Pay'));
+    await tester.pump();
+
+    expect(find.text('Apple Pay is available on iOS only.'), findsOneWidget);
+  });
 }

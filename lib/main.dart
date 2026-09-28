@@ -1,11 +1,13 @@
 import 'dart:io';
 
-import 'package:edfapg_sdk/edfapg_sdk.dart';
+import 'package:edfapay_pg_plugin/edfapay_pg_sdk.dart';
+import 'package:edfapay_apple_pay_sheet/edfapay_apple_pay_sheet.dart';
 import 'package:flutter/material.dart';
 
-const _apiKey = '';
-const _apiPassword = '';
-const _applePayMerchantId = 'merchant.your.merchantid';
+const _apiKey = 'YOUR_X_API_KEY';
+const _baseUrl = 'https://app-api.edfapay.com';
+const _merchantIdentifier = 'merchant.your.merchantid';
+bool _sdkInitialized = false;
 
 void main() {
   runApp(const MyApp());
@@ -96,72 +98,63 @@ Future<void> _payWithApplePay(BuildContext context) async {
     return;
   }
 
-  if (_apiKey.isEmpty || _apiPassword.isEmpty) {
+  if (_apiKey == 'YOUR_X_API_KEY' ||
+      _merchantIdentifier == 'merchant.your.merchantid') {
     messenger.showSnackBar(
       const SnackBar(
-        content: Text('Set your EdfaPay API key and password in main.dart.'),
+        content: Text(
+          'Set your EdfaPay API key and Apple Pay merchant ID in main.dart.',
+        ),
       ),
     );
     return;
   }
 
-  if (_applePayMerchantId == 'merchant.your.merchantid') {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Set your Apple Pay merchant ID in main.dart.'),
-      ),
-    );
-    return;
+  if (!_sdkInitialized) {
+    await EdfaPgSdk.initialize(apiKey: _apiKey, baseUrl: _baseUrl);
+    _sdkInitialized = true;
   }
-
-  await EdfaPgSdk.instance.config(
-    key: _apiKey,
-    password: _apiPassword,
-    enableDebug: false,
-  );
   if (!context.mounted) return;
 
-  final order = EdfaPgSaleOrder(
-    id: 'apple-${DateTime.now().microsecondsSinceEpoch}',
-    amount: 0.11,
+  if (!await EdfaApplePaySheet.canMakePayments()) {
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Apple Pay is unavailable on this device.'),
+      ),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+
+  final response = await EdfaApplePaySheet.present(
+    merchantIdentifier: _merchantIdentifier,
+    countryCode: 'SA',
+    currencyCode: 'SAR',
+    merchantName: 'Your Store',
+    orderId: 'apple-${DateTime.now().microsecondsSinceEpoch}',
+    amount: 1.00,
     description: 'SDK sample Apple Pay order',
-    currency: 'SAR',
-  );
-  final payer = EdfaPgPayer(
-    firstName: 'Kashif',
+    firstName: 'ali',
     lastName: 'User',
     address: 'Street 1',
-    country: 'SA',
+    payerCountry: 'SA',
     city: 'Riyadh',
     zip: '12345',
-    email: 'kashif+merchant1@edfapay.com',
+    email: 'ali@edfapay.com',
     phone: '+15555555555',
     ip: '8.8.8.8',
+    successUrl: 'https://your-success-url',
+    failureUrl: 'https://your-failure-url',
   );
-
-  EdfaApplePay()
-      .setOrder(order)
-      .setPayer(payer)
-      .setApplePayMerchantID(_applePayMerchantId)
-      .onAuthentication((_) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Authorizing Apple Pay...')),
-        );
-      })
-      .onTransactionSuccess((response) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Payment successful: $response')),
-        );
-      })
-      .onTransactionFailure((response) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Payment failed: $response')),
-        );
-      })
-      .onError((error) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Payment error: $error')),
-        );
-      })
-      .initialize(context);
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        response['status'] == 'success'
+            ? 'Payment successful.'
+            : response['status'] == 'cancelled'
+                ? 'Payment cancelled.'
+                : 'Payment failed: ${response['error'] ?? response}',
+      ),
+    ),
+  );
 }
