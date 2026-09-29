@@ -4,6 +4,9 @@ import PackageDescription
 let package = Package(
     name: "edfapay_apple_pay_sheet",
     platforms: [.iOS(.v13)],
+    products: [
+        .library(name: "edfapay-apple-pay-sheet", targets: ["edfapay_apple_pay_sheet"]),
+    ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
         .package(

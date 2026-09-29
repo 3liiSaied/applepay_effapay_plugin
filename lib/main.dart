@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:edfapay_pg_plugin/edfapay_pg_sdk.dart';
 import 'package:edfapay_apple_pay_sheet/edfapay_apple_pay_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 const _apiKey = 'YOUR_X_API_KEY';
-const _baseUrl = 'https://app-api.edfapay.com';
+const _baseUrl = 'YOUR_EDFAPAY_STAGING_BASE_URL';
 const _merchantIdentifier = 'merchant.your.merchantid';
 bool _sdkInitialized = false;
+bool _paymentInProgress = false;
 
 void main() {
   runApp(const MyApp());
@@ -99,62 +101,86 @@ Future<void> _payWithApplePay(BuildContext context) async {
   }
 
   if (_apiKey == 'YOUR_X_API_KEY' ||
+      _baseUrl == 'YOUR_EDFAPAY_STAGING_BASE_URL' ||
       _merchantIdentifier == 'merchant.your.merchantid') {
     messenger.showSnackBar(
       const SnackBar(
         content: Text(
-          'Set your EdfaPay API key and Apple Pay merchant ID in main.dart.',
+          'Set your EdfaPay staging credentials, base URL, and Apple Pay merchant ID in main.dart.',
         ),
       ),
     );
     return;
   }
 
-  if (!_sdkInitialized) {
-    await EdfaPgSdk.initialize(apiKey: _apiKey, baseUrl: _baseUrl);
-    _sdkInitialized = true;
-  }
-  if (!context.mounted) return;
-
-  if (!await EdfaApplePaySheet.canMakePayments()) {
+  if (_paymentInProgress) {
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Apple Pay is unavailable on this device.'),
-      ),
+      const SnackBar(content: Text('An Apple Pay payment is already in progress.')),
     );
     return;
   }
-  if (!context.mounted) return;
 
-  final response = await EdfaApplePaySheet.present(
-    merchantIdentifier: _merchantIdentifier,
-    countryCode: 'SA',
-    currencyCode: 'SAR',
-    merchantName: 'Your Store',
-    orderId: 'apple-${DateTime.now().microsecondsSinceEpoch}',
-    amount: 1.00,
-    description: 'SDK sample Apple Pay order',
-    firstName: 'ali',
-    lastName: 'User',
-    address: 'Street 1',
-    payerCountry: 'SA',
-    city: 'Riyadh',
-    zip: '12345',
-    email: 'ali@edfapay.com',
-    phone: '+15555555555',
-    ip: '8.8.8.8',
-    successUrl: 'https://your-success-url',
-    failureUrl: 'https://your-failure-url',
-  );
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(
-        response['status'] == 'success'
-            ? 'Payment successful.'
-            : response['status'] == 'cancelled'
-                ? 'Payment cancelled.'
-                : 'Payment failed: ${response['error'] ?? response}',
+  _paymentInProgress = true;
+  try {
+    if (!_sdkInitialized) {
+      await EdfaPgSdk.initialize(apiKey: _apiKey, baseUrl: _baseUrl);
+      _sdkInitialized = true;
+    }
+    if (!context.mounted) return;
+
+    if (!await EdfaApplePaySheet.canMakePayments()) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Apple Pay is unavailable on this device.'),
+        ),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+
+    final response = await EdfaApplePaySheet.present(
+      merchantIdentifier: _merchantIdentifier,
+      countryCode: 'SA',
+      currencyCode: 'SAR',
+      merchantName: 'Your Store',
+      orderId: 'apple-${DateTime.now().microsecondsSinceEpoch}',
+      amount: 1.00,
+      description: 'SDK sample Apple Pay order',
+      firstName: 'ali',
+      lastName: 'User',
+      address: 'Street 1',
+      payerCountry: 'SA',
+      city: 'Riyadh',
+      zip: '12345',
+      email: 'ali@edfapay.com',
+      phone: '+15555555555',
+      ip: '8.8.8.8',
+      successUrl: 'https://your-success-url',
+      failureUrl: 'https://your-failure-url',
+    );
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          response['status'] == 'success'
+              ? 'Payment successful.'
+              : response['status'] == 'cancelled'
+                  ? 'Payment cancelled.'
+                  : 'Payment failed: ${response['error'] ?? response}',
+        ),
       ),
-    ),
-  );
+    );
+  } on PlatformException catch (error) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Payment error: ${error.message ?? error.code}')),
+    );
+  } on MissingPluginException catch (error) {
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Apple Pay bridge unavailable: $error')),
+    );
+  } finally {
+    _paymentInProgress = false;
+  }
 }
