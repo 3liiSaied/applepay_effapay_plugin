@@ -12,8 +12,10 @@ by EdfaPay for tests; the production URL can charge real money. Configure the
 Apple Pay capability and matching merchant ID for the iOS target in Xcode. The
 native bridge lives in `packages/edfapay_apple_pay_sheet/ios/`.
 
-The iOS dependencies use Swift Package Manager. On the Mac, from the project
-root, run:
+The iOS dependencies use Swift Package Manager. Do not add a custom
+`packages/edfapay_apple_pay_sheet/ios/Package.swift`; Flutter expects the
+standard plugin layout (`ios/Classes/...`) and will generate the package graph
+for you. On the Mac, from the project root, run:
 
 ```bash
 flutter config --enable-swift-package-manager
